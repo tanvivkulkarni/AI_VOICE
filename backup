@@ -1,0 +1,38 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
+from state import SessionState
+from services.stt import speech_to_text
+from services.tts import text_to_speech
+from services.llm import detect_intent, generate_response
+from flow import handle_intent
+
+app = FastAPI()
+
+state = SessionState(1, 1)
+
+
+class VoiceRequest(BaseModel):
+    audio_file: str
+
+@app.post("/voice")
+async def voice_bot(request: VoiceRequest):
+    # strip any surrounding quotes that swagger sometimes adds
+    audio_path = request.audio_file.strip().strip('"')
+
+    # stt
+    user_text = speech_to_text(audio_path)
+    print(f"User said: {user_text}")  # debug
+    # intent_detection
+    intent = detect_intent(user_text)
+    print(f"Detected intent: {intent}")  # debug
+    # Flow logic
+    if intent == "Other" or intent == "Requesting Information":
+        bot_response = generate_response(intent, user_text)
+    else:
+        bot_response = handle_intent(intent, user_text, state)
+    # tts
+
+    print(f"Bot response: {bot_response}")  # debug
+    output_audio = "response.wav"
+    text_to_speech(bot_response, output_audio)
+    return {"response_audio": output_audio}

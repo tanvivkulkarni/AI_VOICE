@@ -1,0 +1,6 @@
+fastapi
+faster-whisper
+twilio
+httpx
+pyttsx3
+uvicorn
