@@ -4,3 +4,6 @@ twilio
 httpx
 pyttsx3
 uvicorn
+websockets
+python-dotenv
+deepgram-sdk

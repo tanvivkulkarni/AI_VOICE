@@ -1,0 +1,28 @@
+Phone Call Flow (Primary)
+
+Phone Call → Twilio → ngrok → FastAPI → Deepgram Voice Agent
+Step-by-step:
+1. Incoming call hits Twilio — Twilio sends a webhook to your /twilio-voice endpoint (main.py:79-96)
+
+2. TwiML response — Your server responds with XML telling Twilio to open a bidirectional WebSocket Media Stream back to /twilio-media-stream (audio format: mulaw 8kHz)
+
+3. WebSocket bridge starts (main.py:103-198) — When Twilio connects, your server opens a second WebSocket to Deepgram's Voice Agent API (wss://agent.deepgram.com/v1/agent/converse) and sends the agent config
+
+4. Deepgram Agent config (main.py:33-72) — This configures the full pipeline inside Deepgram:
+
+Listen (STT): Deepgram Nova-3 model
+Think (LLM): OpenAI GPT-4o-mini with your health assistant prompt
+Speak (TTS): Deepgram Aura-2 (thalia voice)
+
+5. Three concurrent async tasks run to bridge audio:
+
+    Task	                        Direction	                What it does
+receive_from_twilio	              Twilio → Queue	         Decodes base64 audio from                                                        Twilio buffers it (20×160 bytes), pushes to queue
+
+send_audio_to_deepgram	         Queue → Deepgram	        Pulls buffered chunks and sends raw audio to Deepgram
+
+receive_from_deepgram	         Deepgram → Twilio	        Receives agent TTS audio (binary) or events (JSON), forwards audio back as base64 to Twilio
+
+6. Barge-in support — When Deepgram sends a UserStartedSpeaking event, the server sends a clear event to Twilio to stop playing queued audio, so the user can interrupt the bot
+
+7. Call ends — When Twilio sends a stop event, the receive task finishes, and asyncio.wait(FIRST_COMPLETED) cancels the other tasks
