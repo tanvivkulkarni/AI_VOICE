@@ -4,7 +4,8 @@
       "WebSearch",
       "WebFetch(domain:developers.deepgram.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -r \"handle_intent\\\\|handle_health_information\" --include=*.py .)"
     ]
   }
 }
